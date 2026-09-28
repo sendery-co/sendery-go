@@ -1,0 +1,25 @@
+name: Release
+on:
+  release:
+    types: [published]
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.x'
+          cache: false
+      - name: Check release tag and module path
+        run: |
+          [[ "$GITHUB_REF_NAME" =~ ^v[01]\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]
+          test "$(go list -m)" = github.com/sendery-co/sendery-go
+      - run: go vet ./...
+      - run: go test -race ./...
+      - name: Request the released version from the Go module proxy
+        env:
+          GOPROXY: https://proxy.golang.org
+        run: go list -m "github.com/sendery-co/sendery-go@$GITHUB_REF_NAME"
