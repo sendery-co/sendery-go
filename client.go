@@ -23,12 +23,21 @@ const defaultBaseURL = "https://sendery.co"
 
 var idempotencyKeyPattern = regexp.MustCompile(`^[a-zA-Z0-9_.:-]{1,128}$`)
 
+// Attachment contains file bytes, which encoding/json encodes as base64.
+// Files are sent with this request, not saved in email history.
+type Attachment struct {
+	Filename    string `json:"filename"`
+	Content     []byte `json:"content"`
+	ContentType string `json:"content_type,omitempty"`
+}
+
 // SendEmailInput identifies a published template, its recipient, and variables.
 type SendEmailInput struct {
-	To       string         `json:"to"`
-	Template string         `json:"template"`
-	Data     map[string]any `json:"data"`
-	Locale   string         `json:"locale,omitempty"`
+	Attachments []Attachment   `json:"attachments,omitempty"`
+	To          string         `json:"to"`
+	Template    string         `json:"template"`
+	Data        map[string]any `json:"data"`
+	Locale      string         `json:"locale,omitempty"`
 }
 
 // SendReceipt contains an email's ID and current delivery status.
@@ -177,6 +186,16 @@ func WithRetries(retries int) SendOption {
 func (c *Client) Prepare(input SendEmailInput, options ...SendOption) (*PendingEmail, error) {
 	if input.Data == nil {
 		input.Data = map[string]any{}
+	}
+	total := 0
+	for _, file := range input.Attachments {
+		if len(file.Content) == 0 {
+			return nil, errors.New("sendery: attachments must not be empty")
+		}
+		total += len(file.Content)
+	}
+	if len(input.Attachments) > 10 || total > 5242880 {
+		return nil, errors.New("sendery: use at most 10 attachments, up to 5 MB combined")
 	}
 	body, err := json.Marshal(input)
 	if err != nil {

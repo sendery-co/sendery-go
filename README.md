@@ -13,7 +13,7 @@ Go 1.26+. The SDK uses only the Go standard library.
 From a project with a `go.mod` file:
 
 ```bash
-go get github.com/sendery-co/sendery-go@v0.1.0
+go get github.com/sendery-co/sendery-go@v0.1.1
 ```
 
 ## Set up
@@ -59,6 +59,36 @@ func main() {
 	}
 	fmt.Println(receipt.ID)
 }
+```
+
+## Attachments
+
+Add files to `SendEmailInput.Attachments`. Pass the file bytes in `Content`; the SDK handles base64 encoding.
+
+Send up to 10 files totaling 5 MB. See the [attachment reference](https://sendery.co/en/docs/send-email#section-5) for supported formats and limits.
+
+```go
+file, err := os.ReadFile("document.pdf")
+if err != nil {
+    log.Fatal(err)
+}
+receipt, err := client.Send(context.Background(), sendery.SendEmailInput{
+    To:       "alex@example.com",
+    Template: "welcome",
+    Data: map[string]any{
+        "name":       "Alex",
+        "action_url": "https://example.com/start",
+    },
+    Attachments: []sendery.Attachment{{
+        Filename:    "document.pdf",
+        Content:     file,
+        ContentType: "application/pdf",
+    }},
+}, sendery.WithIdempotencyKey("welcome-attachment-123"))
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println(receipt.ID)
 ```
 
 ## Retrieve an email

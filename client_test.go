@@ -366,3 +366,29 @@ func TestPreparedEmailCanBeSharedByGoroutines(t *testing.T) {
 	}
 	group.Wait()
 }
+
+func TestAttachmentsAreFrozenAndLimited(t *testing.T) {
+	client, err := NewClient("test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bytes := []byte{0, 1, 255}
+	pending, err := client.Prepare(SendEmailInput{To: "a@example.com", Template: "receipt", Attachments: []Attachment{{Filename: "invoice.pdf", Content: bytes, ContentType: "application/pdf"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bytes[0] = 99
+	var payload struct {
+		Attachments []Attachment `json:"attachments"`
+	}
+	if err := json.Unmarshal(pending.body, &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload.Attachments[0].Content[0] != 0 {
+		t.Fatal("attachment bytes changed after preparation")
+	}
+	_, err = client.Prepare(SendEmailInput{Attachments: []Attachment{{Content: make([]byte, 5242880)}, {Content: []byte{1}}}})
+	if err == nil {
+		t.Fatal("combined size limit was not enforced")
+	}
+}
