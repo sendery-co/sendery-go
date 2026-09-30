@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.3
+
+- See the GitHub release notes for this version.
+
 ## 0.1.2
 
 - See the GitHub release notes for this version.
