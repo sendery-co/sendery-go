@@ -392,3 +392,44 @@ func TestAttachmentsAreFrozenAndLimited(t *testing.T) {
 		t.Fatal("combined size limit was not enforced")
 	}
 }
+
+func TestVersionPreservesFrozenPayloadAndKey(t *testing.T) {
+	var bodies []map[string]any
+	var keys []string
+	client := testClient(t, func(request *http.Request) (*http.Response, error) {
+		var payload map[string]any
+		if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
+			t.Fatal(err)
+		}
+		bodies = append(bodies, payload)
+		keys = append(keys, request.Header.Get("Idempotency-Key"))
+		return response(202, `{"id":"msg","status":"queued"}`), nil
+	})
+	email, err := client.Prepare(SendEmailInput{To: "a@example.com", Template: "welcome", Data: map[string]any{"large": int64(9007199254740993)}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pinned, err := email.Version(3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(pinned.body), "9007199254740993") {
+		t.Fatal("version changed existing data")
+	}
+	for _, message := range []*PendingEmail{email, pinned, pinned} {
+		if _, err := message.Send(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, exists := bodies[0]["version"]; exists {
+		t.Fatal("default request contains version")
+	}
+	if bodies[1]["version"] != float64(3) || !reflect.DeepEqual(bodies[1], bodies[2]) || keys[0] != keys[1] || keys[1] != keys[2] {
+		t.Fatal("pinned payload/key changed")
+	}
+	for _, version := range []int{0, -1} {
+		if _, err := email.Version(version); err == nil {
+			t.Fatal("invalid version accepted")
+		}
+	}
+}

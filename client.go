@@ -228,6 +228,25 @@ func (c *Client) Get(ctx context.Context, id string) (*SendReceipt, error) {
 	return c.request(ctx, http.MethodGet, "/api/v1/emails/"+url.PathEscape(id), nil, "")
 }
 
+// Version returns a copy pinned to a published template version.
+func (e *PendingEmail) Version(version int) (*PendingEmail, error) {
+	if version < 1 {
+		return nil, errors.New("sendery: version must be a positive integer")
+	}
+	var payload map[string]json.RawMessage
+	if err := json.Unmarshal(e.body, &payload); err != nil {
+		return nil, err
+	}
+	payload["version"] = json.RawMessage(strconv.Itoa(version))
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+	pinned := *e
+	pinned.body = body
+	return &pinned, nil
+}
+
 // IdempotencyKey returns the key used for every attempt of this email.
 func (e *PendingEmail) IdempotencyKey() string { return e.key }
 

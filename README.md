@@ -18,7 +18,7 @@ go get github.com/sendery-co/sendery-go@v0.1.1
 
 ## Set up
 
-Publish a `welcome` template with `name` and `action_url` variables, and create a [project API key](https://sendery.co/en/docs/authentication). Store it as `SENDERY_API_KEY` on your server.
+Choose a published template and create a [project API key](https://sendery.co/en/docs/authentication). Store the key as `SENDERY_API_KEY` on your server.
 
 ```bash
 export SENDERY_API_KEY="your_project_api_key"
@@ -26,7 +26,9 @@ export SENDERY_API_KEY="your_project_api_key"
 
 ## Send an email
 
-The response contains the accepted email's `ID` and `Status`. Set `Locale` to choose a [template language](https://sendery.co/en/docs/languages). Omit `Data` when the template has no variables; it is sent as an empty JSON object.
+Replace `your-template` with your published template’s key and `Data` with its variables.
+
+The response contains the accepted email’s `ID` and `Status`. Set `Locale` to choose a [template language](https://sendery.co/en/docs/languages). Omit `Data` when the template has no variables; it is sent as an empty JSON object.
 
 ```go
 package main
@@ -48,7 +50,7 @@ func main() {
 
 	receipt, err := client.Send(context.Background(), sendery.SendEmailInput{
 		To:       "alex@example.com",
-		Template: "welcome",
+		Template: "your-template",
 		Data: map[string]any{
 			"name":       "Alex",
 			"action_url": "https://example.com/start",
@@ -61,11 +63,40 @@ func main() {
 }
 ```
 
+## Send a specific version
+
+Choose a [published template version](https://sendery.co/en/docs/send-email#section-5) to keep sending it after newer versions are published. By default, Sendery uses the latest version.
+
+```go
+email, err := client.Prepare(sendery.SendEmailInput{
+	To:       "alex@example.com",
+	Template: "your-template",
+	Data: map[string]any{
+		"name":       "Alex",
+		"action_url": "https://example.com/start",
+	},
+}, sendery.WithIdempotencyKey("your-idempotency-key"))
+if err != nil {
+	log.Fatal(err)
+}
+
+pinned, err := email.Version(3)
+if err != nil {
+	log.Fatal(err)
+}
+
+receipt, err := pinned.Send(context.Background())
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Println(receipt.ID)
+```
+
 ## Attachments
 
 Add files to `SendEmailInput.Attachments`. Pass the file bytes in `Content`; the SDK handles base64 encoding.
 
-Send up to 10 files totaling 5 MB. See the [attachment reference](https://sendery.co/en/docs/send-email#section-5) for supported formats and limits.
+Send up to 10 files totaling 5 MB. See the [attachment reference](https://sendery.co/en/docs/send-email#section-6) for supported formats and limits.
 
 ```go
 file, err := os.ReadFile("document.pdf")
@@ -74,7 +105,7 @@ if err != nil {
 }
 receipt, err := client.Send(context.Background(), sendery.SendEmailInput{
     To:       "alex@example.com",
-    Template: "welcome",
+    Template: "your-template",
     Data: map[string]any{
         "name":       "Alex",
         "action_url": "https://example.com/start",
@@ -84,7 +115,7 @@ receipt, err := client.Send(context.Background(), sendery.SendEmailInput{
         Content:     file,
         ContentType: "application/pdf",
     }},
-}, sendery.WithIdempotencyKey("welcome-attachment-123"))
+}, sendery.WithIdempotencyKey("your-idempotency-key"))
 if err != nil {
     log.Fatal(err)
 }
@@ -105,17 +136,17 @@ fmt.Println(message.Status)
 
 ## Retry a send
 
-Use a unique key for each email and [keep the payload unchanged on retries](https://sendery.co/en/docs/idempotency). `Prepare` saves a copy of the payload. `WithRetries(3)` allows up to three additional attempts; the default is one attempt. You can also pass these options directly to `client.Send`.
+Use `WithRetries(3)` for up to three extra attempts after temporary failures. Keep the same [idempotency key and email data](https://sendery.co/en/docs/idempotency) on every attempt.
 
 ```go
 email, err := client.Prepare(sendery.SendEmailInput{
 	To:       "alex@example.com",
-	Template: "welcome",
+	Template: "your-template",
 	Data: map[string]any{
 		"name":       "Alex",
 		"action_url": "https://example.com/start",
 	},
-}, sendery.WithIdempotencyKey("welcome-123"), sendery.WithRetries(3))
+}, sendery.WithIdempotencyKey("your-idempotency-key"), sendery.WithRetries(3))
 if err != nil {
 	log.Fatal(err)
 }
@@ -126,10 +157,6 @@ if err != nil {
 }
 fmt.Println(receipt.ID)
 ```
-
-When you omit `WithIdempotencyKey`, the SDK generates a key. Read it with `email.IdempotencyKey()` and reuse the prepared email to try the same send again. Each new `client.Send` call otherwise gets a new key.
-
-`WithRetries` accepts `0` to `5`. Retries cover connection failures, unreadable successful responses, HTTP `500`, `502`, `503`, `504`, and `429` with code `rate_limited`. The SDK honors `Retry-After` up to 30 seconds; longer delays return the error so your application can retry later. Without that header, it uses increasing delays with jitter. Validation, billing, capacity, and idempotency conflicts are not retried.
 
 ## Handle errors
 

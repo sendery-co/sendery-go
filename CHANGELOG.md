@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.4
+
+- Optionally pin sends to a published template version.
+
 ## 0.1.3
 
 - See the GitHub release notes for this version.
