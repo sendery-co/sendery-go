@@ -438,7 +438,7 @@ func TestEventRetriesFreezeData(t *testing.T) {
 	var bodies, keys []string
 	client := testClient(t, func(request *http.Request) (*http.Response, error) {
 		if request.Method == http.MethodGet {
-			return response(200, `{"id":"event","status":"accepted","name":"listing.created","received_at":"2026-11-21T00:00:00+00:00","environment":"sandbox","matched_triggers":1,"runs":[{"id":"run","trigger_id":4,"status":"completed","due_at":null,"error_code":null,"actions":[{"position":0,"type":"condition","status":"completed","email_id":null}]}]}`), nil
+			return response(200, `{"id":"event","status":"accepted","name":"listing.created","received_at":"2026-11-21T00:00:00+00:00","environment":"sandbox","matched_workflows":1,"runs":[{"id":"run","workflow_id":4,"status":"completed","due_at":null,"error_code":null,"actions":[{"position":0,"type":"condition","status":"completed","email_id":null}]}]}`), nil
 		}
 		body, _ := io.ReadAll(request.Body)
 		bodies = append(bodies, string(body))
@@ -448,7 +448,7 @@ func TestEventRetriesFreezeData(t *testing.T) {
 			retry.Header.Set("Retry-After", "0")
 			return retry, nil
 		}
-		return response(202, `{"id":"event","status":"accepted","matched_triggers":2}`), nil
+		return response(202, `{"id":"event","status":"accepted","matched_workflows":2}`), nil
 	})
 	input := EventInput{Name: "listing.created", Object: EventObject{Type: "listing", ID: "42"}, Data: map[string]any{"owner": map[string]any{"email": "alex@example.com"}}}
 	event, err := client.PrepareEvent(input, WithRetries(3))
@@ -457,7 +457,7 @@ func TestEventRetriesFreezeData(t *testing.T) {
 	}
 	input.Data["owner"].(map[string]any)["email"] = "changed@example.com"
 	receipt, err := event.Send(context.Background())
-	if err != nil || receipt.MatchedTriggers != 2 {
+	if err != nil || receipt.MatchedWorkflows != 2 {
 		t.Fatalf("%+v %v", receipt, err)
 	}
 	if bodies[0] != bodies[1] || keys[0] != keys[1] || !strings.Contains(bodies[0], "alex@example.com") {

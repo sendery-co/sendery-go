@@ -19,23 +19,23 @@ type EventInput struct {
 	Data          map[string]any `json:"data"`
 }
 type EventReceipt struct {
-	ID              string       `json:"id"`
-	Status          string       `json:"status"`
-	Name            string       `json:"name,omitempty"`
-	ReceivedAt      string       `json:"received_at,omitempty"`
-	MatchedTriggers int          `json:"matched_triggers"`
-	Environment     string       `json:"environment,omitempty"`
-	Runs            []TriggerRun `json:"runs,omitempty"`
+	ID               string        `json:"id"`
+	Status           string        `json:"status"`
+	Name             string        `json:"name,omitempty"`
+	ReceivedAt       string        `json:"received_at,omitempty"`
+	MatchedWorkflows int           `json:"matched_workflows"`
+	Environment      string        `json:"environment,omitempty"`
+	Runs             []WorkflowRun `json:"runs,omitempty"`
 }
-type TriggerRun struct {
-	ID        string          `json:"id"`
-	TriggerID int64           `json:"trigger_id"`
-	Status    string          `json:"status"`
-	DueAt     *string         `json:"due_at"`
-	ErrorCode *string         `json:"error_code"`
-	Actions   []TriggerAction `json:"actions"`
+type WorkflowRun struct {
+	ID         string           `json:"id"`
+	WorkflowID int64            `json:"workflow_id"`
+	Status     string           `json:"status"`
+	DueAt      *string          `json:"due_at"`
+	ErrorCode  *string          `json:"error_code"`
+	Actions    []WorkflowAction `json:"actions"`
 }
-type TriggerAction struct {
+type WorkflowAction struct {
 	Position int     `json:"position"`
 	Type     string  `json:"type"`
 	Status   string  `json:"status"`

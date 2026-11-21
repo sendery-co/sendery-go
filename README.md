@@ -219,7 +219,7 @@ Add `net/http` and `time` to your imports for this example. The SDK copies the H
 
 [MIT](LICENSE).
 
-## Events and triggers
+## Events and workflows
 
 Send events such as account signups or orders from your app. Your team can use them to automate emails in Sendery, choosing the content, recipients, and timing. Available on all plans.
 
@@ -233,4 +233,4 @@ receipt, err := client.SendEvent(ctx, sendery.EventInput{
 }, sendery.WithRetries(3))
 ```
 
-Retries reuse the same event data and idempotency key. To retry across jobs or process restarts, supply and persist your own key. A successful response confirms that Sendery accepted the event. [Learn what you can automate with triggers](https://sendery.co/en/docs/build-trigger).
+Retries reuse the same event data and idempotency key. To retry across jobs or process restarts, supply and persist your own key. A successful response confirms that Sendery accepted the event. [Learn what you can automate with workflows](https://sendery.co/en/docs/build-workflow).

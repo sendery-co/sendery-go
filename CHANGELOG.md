@@ -1,8 +1,12 @@
 # Changelog
 
+## 0.1.6
+
+- See the GitHub release notes for this version.
+
 ## 0.1.5
 
-- Register and list event definitions with readable data fields and recipient roles for the visual trigger builder.
+- Register and list event definitions with readable data fields and recipient roles for the visual workflow builder.
 
 - Add application events, stable-key retries, event status lookup, and object-data deletion. Framework integrations use the project client.
 
