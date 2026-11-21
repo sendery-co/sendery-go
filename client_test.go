@@ -433,3 +433,67 @@ func TestVersionPreservesFrozenPayloadAndKey(t *testing.T) {
 		}
 	}
 }
+
+func TestEventRetriesFreezeData(t *testing.T) {
+	var bodies, keys []string
+	client := testClient(t, func(request *http.Request) (*http.Response, error) {
+		if request.Method == http.MethodGet {
+			return response(200, `{"id":"event","status":"accepted","name":"listing.created","received_at":"2026-11-21T00:00:00+00:00","environment":"sandbox","matched_triggers":1,"runs":[{"id":"run","trigger_id":4,"status":"completed","due_at":null,"error_code":null,"actions":[{"position":0,"type":"condition","status":"completed","email_id":null}]}]}`), nil
+		}
+		body, _ := io.ReadAll(request.Body)
+		bodies = append(bodies, string(body))
+		keys = append(keys, request.Header.Get("Idempotency-Key"))
+		if len(bodies) == 1 {
+			retry := response(503, `{}`)
+			retry.Header.Set("Retry-After", "0")
+			return retry, nil
+		}
+		return response(202, `{"id":"event","status":"accepted","matched_triggers":2}`), nil
+	})
+	input := EventInput{Name: "listing.created", Object: EventObject{Type: "listing", ID: "42"}, Data: map[string]any{"owner": map[string]any{"email": "alex@example.com"}}}
+	event, err := client.PrepareEvent(input, WithRetries(3))
+	if err != nil {
+		t.Fatal(err)
+	}
+	input.Data["owner"].(map[string]any)["email"] = "changed@example.com"
+	receipt, err := event.Send(context.Background())
+	if err != nil || receipt.MatchedTriggers != 2 {
+		t.Fatalf("%+v %v", receipt, err)
+	}
+	if bodies[0] != bodies[1] || keys[0] != keys[1] || !strings.Contains(bodies[0], "alex@example.com") {
+		t.Fatal("event changed during retry")
+	}
+	result, err := client.GetEvent(context.Background(), "event")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Name != "listing.created" || result.ReceivedAt != "2026-11-21T00:00:00+00:00" || len(result.Runs) != 1 || len(result.Runs[0].Actions) != 1 || result.Runs[0].Actions[0].Type != "condition" {
+		t.Fatalf("event details were lost: %+v", result)
+	}
+	if _, err := client.ForgetObject(context.Background(), input.Object); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestEventDefinitionResponses(t *testing.T) {
+	client := testClient(t, func(request *http.Request) (*http.Response, error) {
+		if request.Method == "PUT" {
+			if request.URL.Path != "/api/v1/event-types/document.signed" {
+				t.Fatal(request.URL.Path)
+			}
+			return response(200, `{"name":"document.signed","verified":false}`), nil
+		}
+		return response(200, `{"events":[]}`), nil
+	})
+	receipt, err := client.DefineEvent(context.Background(), "document.signed", EventDefinition{Label: "Document signed"})
+	if err != nil || receipt.Verified {
+		t.Fatalf("%+v %v", receipt, err)
+	}
+	catalog, err := client.GetEventTypes(context.Background())
+	if err != nil || len(catalog) != 0 {
+		t.Fatalf("%+v %v", catalog, err)
+	}
+	if _, err := client.Get(context.Background(), "email"); err == nil {
+		t.Fatal("email response validation was bypassed")
+	}
+}

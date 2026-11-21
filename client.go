@@ -253,10 +253,18 @@ func (e *PendingEmail) IdempotencyKey() string { return e.key }
 // Send submits the prepared email. Canceling ctx stops the request or retry
 // wait. Cancellation does not guarantee that the email was not accepted.
 func (e *PendingEmail) Send(ctx context.Context) (*SendReceipt, error) {
+	return sendPrepared[SendReceipt](ctx, e, "/api/v1/emails")
+}
+
+func sendPrepared[T any](ctx context.Context, e *PendingEmail, path string) (*T, error) {
 	for attempt := 0; ; attempt++ {
-		receipt, err := e.client.request(ctx, http.MethodPost, "/api/v1/emails", e.body, e.key)
+		data, err := e.client.requestJSON(ctx, http.MethodPost, path, e.body, e.key)
 		if err == nil {
-			return receipt, nil
+			var receipt T
+			if err := json.Unmarshal(data, &receipt); err != nil {
+				return nil, &APIError{Code: "invalid_response", cause: err}
+			}
+			return &receipt, nil
 		}
 		var apiError *APIError
 		if attempt >= e.retries || !errors.As(err, &apiError) || !apiError.Retryable() {
@@ -280,6 +288,18 @@ func (e *PendingEmail) Send(ctx context.Context) (*SendReceipt, error) {
 }
 
 func (c *Client) request(ctx context.Context, method, path string, body []byte, key string) (*SendReceipt, error) {
+	data, err := c.requestJSON(ctx, method, path, body, key)
+	if err != nil {
+		return nil, err
+	}
+	var receipt SendReceipt
+	if err := json.Unmarshal(data, &receipt); err != nil {
+		return nil, &APIError{Code: "invalid_response", cause: err}
+	}
+	return &receipt, nil
+}
+
+func (c *Client) requestJSON(ctx context.Context, method, path string, body []byte, key string) ([]byte, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -323,6 +343,20 @@ func (c *Client) request(ctx context.Context, method, path string, body []byte, 
 	if readError != nil || len(data) > maxResponseBytes {
 		return nil, &APIError{Code: "invalid_response", cause: readError}
 	}
+	if strings.HasPrefix(path, "/api/v1/event-types") {
+		var result struct {
+			Name     *string            `json:"name"`
+			Verified *bool              `json:"verified"`
+			Events   *[]json.RawMessage `json:"events"`
+		}
+		if err := json.Unmarshal(data, &result); err != nil {
+			return nil, &APIError{Code: "invalid_response", cause: err}
+		}
+		if (path == "/api/v1/event-types" && result.Events == nil) || (path != "/api/v1/event-types" && (result.Name == nil || result.Verified == nil)) {
+			return nil, &APIError{Code: "invalid_response"}
+		}
+		return data, nil
+	}
 	var receipt SendReceipt
 	if err := json.Unmarshal(data, &receipt); err != nil {
 		return nil, &APIError{Code: "invalid_response", cause: err}
@@ -330,7 +364,7 @@ func (c *Client) request(ctx context.Context, method, path string, body []byte, 
 	if receipt.ID == "" || receipt.Status == "" {
 		return nil, &APIError{Code: "invalid_response"}
 	}
-	return &receipt, nil
+	return data, nil
 }
 
 func parseRetryAfter(value string, now time.Time) *time.Duration {
