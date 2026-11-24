@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.7
+
+- See the GitHub release notes for this version.
+
 ## 0.1.6
 
 - See the GitHub release notes for this version.
