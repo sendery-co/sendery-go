@@ -18,10 +18,10 @@ func ExampleClient_Send() {
 	}
 
 	receipt, err := client.Send(context.Background(), sendery.SendEmailInput{
-		To:       "alex@example.com",
+		To:       "steven@example.com",
 		Template: "welcome",
 		Data: map[string]any{
-			"name":       "Alex",
+			"name":       "Steven",
 			"action_url": "https://example.com/start",
 		},
 	})
@@ -46,10 +46,10 @@ func ExampleClient_Prepare() {
 	client, _ := sendery.NewClient("project_api_key")
 
 	email, err := client.Prepare(sendery.SendEmailInput{
-		To:       "alex@example.com",
+		To:       "steven@example.com",
 		Template: "welcome",
 		Data: map[string]any{
-			"name":       "Alex",
+			"name":       "Steven",
 			"action_url": "https://example.com/start",
 		},
 	}, sendery.WithIdempotencyKey("welcome-123"), sendery.WithRetries(3))
@@ -66,7 +66,7 @@ func ExampleClient_Prepare() {
 
 func ExampleAPIError() {
 	client, _ := sendery.NewClient("project_api_key")
-	email, _ := client.Prepare(sendery.SendEmailInput{To: "alex@example.com", Template: "welcome"})
+	email, _ := client.Prepare(sendery.SendEmailInput{To: "steven@example.com", Template: "welcome"})
 
 	// Add "errors" to your imports.
 	receipt, err := email.Send(context.Background())
@@ -88,7 +88,7 @@ func ExampleAPIError() {
 
 func ExamplePendingEmail_Send() {
 	client, _ := sendery.NewClient("project_api_key")
-	email, _ := client.Prepare(sendery.SendEmailInput{To: "alex@example.com", Template: "welcome"})
+	email, _ := client.Prepare(sendery.SendEmailInput{To: "steven@example.com", Template: "welcome"})
 
 	// Add "time" to your imports. In an HTTP handler, use r.Context()
 	// as the parent context so requests stop when the caller disconnects.

@@ -49,10 +49,10 @@ func main() {
 	}
 
 	receipt, err := client.Send(context.Background(), sendery.SendEmailInput{
-		To:       "alex@example.com",
+		To:       "steven@example.com",
 		Template: "your-template",
 		Data: map[string]any{
-			"name":       "Alex",
+			"name":       "Steven",
 			"action_url": "https://example.com/start",
 		},
 	})
@@ -69,10 +69,10 @@ Choose a [published template version](https://sendery.co/en/docs/send-email#sect
 
 ```go
 email, err := client.Prepare(sendery.SendEmailInput{
-	To:       "alex@example.com",
+	To:       "steven@example.com",
 	Template: "your-template",
 	Data: map[string]any{
-		"name":       "Alex",
+		"name":       "Steven",
 		"action_url": "https://example.com/start",
 	},
 }, sendery.WithIdempotencyKey("your-idempotency-key"))
@@ -104,10 +104,10 @@ if err != nil {
     log.Fatal(err)
 }
 receipt, err := client.Send(context.Background(), sendery.SendEmailInput{
-    To:       "alex@example.com",
+    To:       "steven@example.com",
     Template: "your-template",
     Data: map[string]any{
-        "name":       "Alex",
+        "name":       "Steven",
         "action_url": "https://example.com/start",
     },
     Attachments: []sendery.Attachment{{
@@ -140,10 +140,10 @@ Use `WithRetries(3)` for up to three extra attempts after temporary failures. Ke
 
 ```go
 email, err := client.Prepare(sendery.SendEmailInput{
-	To:       "alex@example.com",
+	To:       "steven@example.com",
 	Template: "your-template",
 	Data: map[string]any{
-		"name":       "Alex",
+		"name":       "Steven",
 		"action_url": "https://example.com/start",
 	},
 }, sendery.WithIdempotencyKey("your-idempotency-key"), sendery.WithRetries(3))
@@ -229,7 +229,7 @@ Start with [Connecting your application](https://sendery.co/en/docs/connect-even
 receipt, err := client.SendEvent(ctx, sendery.EventInput{
     Name: "account.created",
     Object: sendery.EventObject{Type: "account", ID: "842"},
-    Data: map[string]any{"email": "alex@example.com", "name": "Alex"},
+    Data: map[string]any{"email": "steven@example.com", "name": "Steven"},
 }, sendery.WithRetries(3))
 ```
 
