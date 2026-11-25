@@ -43,6 +43,7 @@ type SendEmailInput struct {
 // SendReceipt contains an email's ID and current delivery status.
 // Acceptance does not confirm inbox delivery; use Client.Get to check status.
 type SendReceipt struct {
+	SandboxURL  string  `json:"sandbox_url,omitempty"`
 	ID          string  `json:"id"`
 	Status      string  `json:"status"`
 	ErrorCode   *string `json:"error_code"`
@@ -287,6 +288,43 @@ func sendPrepared[T any](ctx context.Context, e *PendingEmail, path string) (*T,
 	}
 }
 
+// RenderEmailInput identifies a published template without a recipient.
+type RenderEmailInput struct {
+	Template string         `json:"template"`
+	Data     map[string]any `json:"data"`
+	Locale   string         `json:"locale,omitempty"`
+	Version  *int           `json:"version,omitempty"`
+}
+
+type RenderedEmail struct {
+	Subject string `json:"subject"`
+	HTML    string `json:"html"`
+	Text    string `json:"text"`
+}
+
+// Render returns content without sending or storing a message.
+func (c *Client) Render(ctx context.Context, input RenderEmailInput) (*RenderedEmail, error) {
+	if input.Version != nil && *input.Version < 1 {
+		return nil, errors.New("sendery: version must be a positive integer")
+	}
+	if input.Data == nil {
+		input.Data = map[string]any{}
+	}
+	body, err := json.Marshal(input)
+	if err != nil {
+		return nil, err
+	}
+	data, err := c.requestJSON(ctx, http.MethodPost, "/api/v1/emails/render", body, "")
+	if err != nil {
+		return nil, err
+	}
+	var email RenderedEmail
+	if err := json.Unmarshal(data, &email); err != nil {
+		return nil, &APIError{Code: "invalid_response", cause: err}
+	}
+	return &email, nil
+}
+
 func (c *Client) request(ctx context.Context, method, path string, body []byte, key string) (*SendReceipt, error) {
 	data, err := c.requestJSON(ctx, method, path, body, key)
 	if err != nil {
@@ -321,7 +359,10 @@ func (c *Client) requestJSON(ctx context.Context, method, path string, body []by
 		return nil, &APIError{Code: "connection_error", cause: err}
 	}
 	defer response.Body.Close()
-	const maxResponseBytes = 1 << 20
+	maxResponseBytes := int64(1 << 20)
+	if path == "/api/v1/emails/render" {
+		maxResponseBytes = 8 << 20
+	}
 	data, readError := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes+1))
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
@@ -340,8 +381,22 @@ func (c *Client) requestJSON(ctx context.Context, method, path string, body []by
 			RetryAfter: parseRetryAfter(response.Header.Get("Retry-After"), time.Now()),
 		}
 	}
-	if readError != nil || len(data) > maxResponseBytes {
+	if readError != nil || int64(len(data)) > maxResponseBytes {
 		return nil, &APIError{Code: "invalid_response", cause: readError}
+	}
+	if path == "/api/v1/emails/render" {
+		var email struct {
+			Subject *string `json:"subject"`
+			HTML    *string `json:"html"`
+			Text    *string `json:"text"`
+		}
+		if err := json.Unmarshal(data, &email); err != nil {
+			return nil, &APIError{Code: "invalid_response", cause: err}
+		}
+		if email.Subject == nil || email.HTML == nil || email.Text == nil {
+			return nil, &APIError{Code: "invalid_response"}
+		}
+		return data, nil
 	}
 	if strings.HasPrefix(path, "/api/v1/event-types") {
 		var result struct {

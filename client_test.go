@@ -497,3 +497,41 @@ func TestEventDefinitionResponses(t *testing.T) {
 		t.Fatal("email response validation was bypassed")
 	}
 }
+
+func TestRenderUsesTemplateOnlyAndValidatesResponse(t *testing.T) {
+	client := testClient(t, func(request *http.Request) (*http.Response, error) {
+		if request.URL.Path != "/api/v1/emails/render" || request.Method != "POST" {
+			t.Fatal("wrong render endpoint")
+		}
+		var payload map[string]any
+		json.NewDecoder(request.Body).Decode(&payload)
+		if payload["to"] != nil || payload["version"] != float64(2) {
+			t.Fatal("wrong render payload")
+		}
+		return response(200, `{"subject":"Hello","html":"<p>Hello</p>","text":"Hello"}`), nil
+	})
+	version := 2
+	email, err := client.Render(context.Background(), RenderEmailInput{Template: "welcome", Data: map[string]any{}, Version: &version})
+	if err != nil || email.Text != "Hello" {
+		t.Fatalf("render failed: %v", err)
+	}
+	invalid := testClient(t, func(request *http.Request) (*http.Response, error) { return response(200, `{"html":"body"}`), nil })
+	if _, err := invalid.Render(context.Background(), RenderEmailInput{Template: "welcome"}); err == nil {
+		t.Fatal("accepted incomplete content")
+	}
+}
+
+func TestRenderAcceptsHtmlAndTextAtTheServerSizeLimits(t *testing.T) {
+	expected := RenderedEmail{Subject: "Hello", HTML: strings.Repeat("x", 1<<20), Text: strings.Repeat("x", 1<<18)}
+	body, err := json.Marshal(expected)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := testClient(t, func(request *http.Request) (*http.Response, error) {
+		return response(200, string(body)), nil
+	})
+	actual, err := client.Render(context.Background(), RenderEmailInput{Template: "welcome"})
+	if err != nil || actual == nil || *actual != expected {
+		t.Fatalf("large render failed: %v", err)
+	}
+}

@@ -24,6 +24,21 @@ Choose a published template and create a [project API key](https://sendery.co/en
 export SENDERY_API_KEY="your_project_api_key"
 ```
 
+## Development and staging
+
+Use a **Sandbox** API key for development and staging. Sendery prevents email and workflow delivery from that key, even when the project is live. Production requires a **Live** key and live sending enabled on the project. Keep keys on the server. Test event-definition changes in a separate sandbox project.
+
+To get a published template’s content without sending or saving an email:
+
+```go
+content, err := client.Render(ctx, sendery.RenderEmailInput{
+    Template: "welcome", Data: map[string]any{"name": "Steven"},
+})
+// Handle err before using content.Subject, content.HTML, and content.Text.
+```
+
+Rendering is limited to 10 requests per minute per workspace and 100 / 1,000 / 5,000 / 10,000 per calendar month on Free / Starter / Business / Scale or Enterprise. Render errors stop delivery.
+
 ## Send an email
 
 Replace `your-template` with your published template’s key and `Data` with its variables.
