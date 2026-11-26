@@ -118,10 +118,11 @@ type EventRecordType struct {
 	Label string `json:"label"`
 }
 type EventDefinition struct {
-	Label      string                    `json:"label"`
-	Object     EventRecordType           `json:"object"`
-	Fields     map[string]EventField     `json:"fields"`
-	Recipients map[string]EventRecipient `json:"recipients"`
+	Label       string                    `json:"label"`
+	Description string                    `json:"description,omitempty"`
+	Object      EventRecordType           `json:"object"`
+	Fields      map[string]EventField     `json:"fields"`
+	Recipients  map[string]EventRecipient `json:"recipients"`
 }
 type EventTypeReceipt struct {
 	Name     string `json:"name"`

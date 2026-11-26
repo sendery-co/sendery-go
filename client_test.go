@@ -481,11 +481,15 @@ func TestEventDefinitionResponses(t *testing.T) {
 			if request.URL.Path != "/api/v1/event-types/document.signed" {
 				t.Fatal(request.URL.Path)
 			}
+			var payload EventDefinition
+			if err := json.NewDecoder(request.Body).Decode(&payload); err != nil || payload.Description != "When a document is signed." {
+				t.Fatalf("wrong event description: %+v %v", payload, err)
+			}
 			return response(200, `{"name":"document.signed","verified":false}`), nil
 		}
 		return response(200, `{"events":[]}`), nil
 	})
-	receipt, err := client.DefineEvent(context.Background(), "document.signed", EventDefinition{Label: "Document signed"})
+	receipt, err := client.DefineEvent(context.Background(), "document.signed", EventDefinition{Label: "Document signed", Description: "When a document is signed."})
 	if err != nil || receipt.Verified {
 		t.Fatalf("%+v %v", receipt, err)
 	}
