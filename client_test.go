@@ -450,7 +450,7 @@ func TestEventRetriesFreezeData(t *testing.T) {
 		}
 		return response(202, `{"id":"event","status":"accepted","matched_workflows":2}`), nil
 	})
-	input := EventInput{Name: "listing.created", Object: EventObject{Type: "listing", ID: "42"}, Data: map[string]any{"owner": map[string]any{"email": "steven@example.com"}}}
+	input := EventInput{Language: "ja", Name: "listing.created", Object: EventObject{Type: "listing", ID: "42"}, Data: map[string]any{"owner": map[string]any{"email": "steven@example.com"}}}
 	event, err := client.PrepareEvent(input, WithRetries(3))
 	if err != nil {
 		t.Fatal(err)
@@ -460,7 +460,7 @@ func TestEventRetriesFreezeData(t *testing.T) {
 	if err != nil || receipt.MatchedWorkflows != 2 {
 		t.Fatalf("%+v %v", receipt, err)
 	}
-	if bodies[0] != bodies[1] || keys[0] != keys[1] || !strings.Contains(bodies[0], "steven@example.com") {
+	if bodies[0] != bodies[1] || keys[0] != keys[1] || !strings.Contains(bodies[0], "steven@example.com") || !strings.Contains(bodies[0], `"language":"ja"`) {
 		t.Fatal("event changed during retry")
 	}
 	result, err := client.GetEvent(context.Background(), "event")

@@ -13,6 +13,7 @@ type EventObject struct {
 	ID   string `json:"id"`
 }
 type EventInput struct {
+	Language      string         `json:"language,omitempty"`
 	Name          string         `json:"name"`
 	Object        EventObject    `json:"object"`
 	CorrelationID string         `json:"correlation_id,omitempty"`
@@ -107,22 +108,15 @@ type EventField struct {
 	Required bool   `json:"required,omitempty"`
 	Example  any    `json:"example,omitempty"`
 }
-type EventRecipient struct {
-	Label  string `json:"label"`
-	Email  string `json:"email"`
-	Name   string `json:"name,omitempty"`
-	Locale string `json:"locale,omitempty"`
-}
 type EventRecordType struct {
 	Type  string `json:"type"`
 	Label string `json:"label"`
 }
 type EventDefinition struct {
-	Label       string                    `json:"label"`
-	Description string                    `json:"description,omitempty"`
-	Object      EventRecordType           `json:"object"`
-	Fields      map[string]EventField     `json:"fields"`
-	Recipients  map[string]EventRecipient `json:"recipients"`
+	Label       string                `json:"label"`
+	Description string                `json:"description,omitempty"`
+	Object      EventRecordType       `json:"object"`
+	Fields      map[string]EventField `json:"fields"`
 }
 type EventTypeReceipt struct {
 	Name     string `json:"name"`
@@ -138,9 +132,6 @@ type EventType struct {
 func (c *Client) DefineEvent(ctx context.Context, name string, definition EventDefinition) (*EventTypeReceipt, error) {
 	if definition.Fields == nil {
 		definition.Fields = map[string]EventField{}
-	}
-	if definition.Recipients == nil {
-		definition.Recipients = map[string]EventRecipient{}
 	}
 	body, err := json.Marshal(definition)
 	if err != nil {
